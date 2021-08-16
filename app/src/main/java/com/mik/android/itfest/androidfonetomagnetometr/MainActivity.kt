@@ -1,9 +1,7 @@
 package com.mik.android.itfest.androidfonetomagnetometr
 
 import android.Manifest
-import android.bluetooth.BluetoothDevice
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -16,14 +14,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -34,7 +29,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private val stateViewModel by viewModels<StateViewModel>()
     private val permissionViewModel by viewModels<PermissionViewModel>()
 
-//    private lateinit var bluetoothAdapter: BluetoothAdapter
     private lateinit var sensorManager: SensorManager
 
     private val requestPermissionLauncher =
@@ -46,16 +40,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             }
         }
 
-    private val startForResult =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-            if (it.resultCode == RESULT_OK) {
-                Toast.makeText(this, "IsOn", Toast.LENGTH_LONG).show()
-                stateViewModel.btNowIsOn()
-            }
-        }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        stateViewModel.attachForResultLauncher { onRes, contract ->
+            registerForActivityResult(contract, onRes)
+        }
 
         setContent {
             AndroidFoneToMagnetometrTheme {
@@ -68,9 +58,9 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                         DisplayValues(orientationViewModel = orientationViewModel)
 
                         IsGranted(permissionViewModel) {
-                            BtRemote(stateViewModel = stateViewModel, onLaunchForResult = {
-                                startForResult.launch(it)
-                            })
+                            BtRemote(
+                                stateViewModel = stateViewModel,
+                            )
                         }
                     }
                 }
@@ -172,53 +162,6 @@ fun DisplayValues(orientationViewModel: OrientationViewModel) {
         array.forEach {
             Text(text = it.toString(), modifier = Modifier.padding(10.dp))
         }
-    }
-}
-
-@Composable
-fun BtRemote(stateViewModel: StateViewModel, onLaunchForResult: (Intent) -> Unit) {
-    val btButtonState by stateViewModel.bluetoothOn.observeAsState(stateViewModel.defaultEnable)
-
-    TurnOnOff(onClick = {
-        if (!btButtonState) {
-            stateViewModel.btEnableIntent().also {
-                onLaunchForResult(it)
-            }
-        } else {
-            stateViewModel.btDisable()
-        }
-    }, btButtonState)
-
-    if (btButtonState) {
-        val listDevices by stateViewModel.bondedDevices.observeAsState(emptyList())
-        List0fDevices(listDevices = listDevices, OnCheck = {})
-    }
-}
-
-@Composable
-fun List0fDevices(listDevices: List<BluetoothDevice>, OnCheck: (BluetoothDevice) -> Unit) {
-    var check by remember {
-        mutableStateOf("")
-    }
-    LazyColumn {
-        items(listDevices) { btDevice ->
-            Row(Modifier
-                .fillMaxWidth()
-                .padding(10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = btDevice.name)
-                Checkbox(checked = check == btDevice.name, onCheckedChange = {
-                    if (it) OnCheck(btDevice)
-                    check = btDevice.name
-                })
-            }
-        }
-    }
-}
-
-@Composable
-fun TurnOnOff(onClick: () -> Unit = {}, toggleState: Boolean) {
-    Button(onClick = onClick, Modifier.padding(10.dp)) {
-        Text(text = if (toggleState) "Off" else "On")
     }
 }
 
