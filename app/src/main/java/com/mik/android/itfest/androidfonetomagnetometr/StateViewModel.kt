@@ -1,17 +1,20 @@
 package com.mik.android.itfest.androidfonetomagnetometr
 
+import android.app.Application
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothSocket
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.*
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.WorkRequest
 
-class StateViewModel : ViewModel() {
+class StateViewModel(application: Application) : AndroidViewModel(application) {
 
     private lateinit var _startForResultLauncher: ActivityResultLauncher<Intent>
 
@@ -39,6 +42,32 @@ class StateViewModel : ViewModel() {
         bluetoothAdapter.disable()
         btOff()
     }
+
+    private val workManager = WorkManager.getInstance(application)
+
+    private val btConnectionWorkRequest: WorkRequest =
+        OneTimeWorkRequestBuilder<BtConnectWorker>()
+            .build()
+
+    private val stateWork = workManager.getWorkInfoByIdLiveData(btConnectionWorkRequest.id)
+
+    val isBtConnect = Transformations.map(stateWork) {
+        when(it.state) {
+            WorkInfo.State.SUCCEEDED -> BtConnectState.CONNECTED
+            WorkInfo.State.FAILED -> BtConnectState.CONNECTION_FAILED
+            WorkInfo.State.CANCELLED -> BtConnectState.CONNECTION_CANCEL
+            else -> BtConnectState.CONNECTION
+        }
+    }
+
+    val btDeviceSocket = Transformations.map(stateWork) {
+        if(it.state == WorkInfo.State.SUCCEEDED)
+            it.outputData.keyValueMap[BtConnectWorker.SOCKET_KEY] as BluetoothSocket
+        else null
+    }
+
+    fun btStartServerForConnection() =
+        workManager.enqueue(btConnectionWorkRequest)
 
     private fun btNowIsOn() {
         _bluetoothOn.value = true

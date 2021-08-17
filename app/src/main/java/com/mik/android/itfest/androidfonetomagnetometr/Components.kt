@@ -48,6 +48,8 @@ fun BtRemote(stateViewModel: StateViewModel) {
         }
     }, btButtonState)
 
+
+
     if (btButtonState) {
         val listDevices by stateViewModel.bondedDevices.observeAsState(emptyList())
         List0fDevices(listDevices = listDevices, OnCheck = {})

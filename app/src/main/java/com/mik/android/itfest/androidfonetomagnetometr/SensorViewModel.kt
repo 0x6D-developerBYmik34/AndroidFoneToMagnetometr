@@ -27,11 +27,10 @@ class SensorViewModel(application: Application): AndroidViewModel(application),
     private val accelerometerReading = FloatArray(3)
     private val magnetometerReading = FloatArray(3)
 
-    private val updateOrAngles = MutableLiveData<Unit>()
+    private val updateOrAngles = MutableLiveData(Unit)
 
     val orientationAngles =
-        Transformations
-            .map(updateOrAngles) { emitOrientationAngles().toList() }
+        Transformations.map(updateOrAngles) { emitOrientationAngles().toList() }
 
     private fun emitOrientationAngles() =
         FloatArray(9)
