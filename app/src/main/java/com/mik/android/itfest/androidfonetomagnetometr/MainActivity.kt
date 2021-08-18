@@ -22,7 +22,7 @@ import com.mik.android.itfest.androidfonetomagnetometr.ui.theme.AndroidFoneToMag
 
 class MainActivity : ComponentActivity() {
 
-    private val sensorViewModel by viewModels<SensorViewModel>()
+//    private val sensorViewModel by viewModels<SensorViewModel>()
     private val stateViewModel by viewModels<StateViewModel>()
     private val permissionViewModel by viewModels<PermissionViewModel>()
 
@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Top,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        DisplayValues(sensorViewModel = sensorViewModel)
+//                        DisplayValues(sensorViewModel = sensorViewModel)
 
                         IsGranted(permissionViewModel) {
                             BtRemote(
@@ -70,15 +70,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        sensorViewModel.startSensorsListening()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        sensorViewModel.stopListeningSensors()
-    }
+//    override fun onResume() {
+//        super.onResume()
+//        sensorViewModel.startSensorsListening()
+//    }
+//
+//    override fun onPause() {
+//        super.onPause()
+//        sensorViewModel.stopListeningSensors()
+//    }
 }
 
 @Preview(showBackground = true)

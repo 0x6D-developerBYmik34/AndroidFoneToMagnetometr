@@ -2,65 +2,53 @@ package com.mik.android.itfest.androidfonetomagnetometr
 
 import android.bluetooth.BluetoothSocket
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
+import java.nio.ByteBuffer
 
 class BtDataTransferWorker(context: Context, workerParams: WorkerParameters) :
     CoroutineWorker(context, workerParams) {
 
-    private val currentSocket = inputData.keyValueMap[BT_SOCKET] as BluetoothSocket
+    private val sensorRepo = DataFromSensorRepo(context)
 
-    private val mmInStream = currentSocket.inputStream
-    private val mmOutStream = currentSocket.outputStream
+    private val mmInStream = currentSocket?.inputStream
+    private val mmOutStream = currentSocket?.outputStream
 
-    private val inputFlow = mmInStream
-        .bufferedReader()
-        .lineSequence()
-        .asFlow().flowOn(Dispatchers.IO)
+    override suspend fun doWork(): Result =
+        withContext(Dispatchers.IO) {
+            val sensorFlow = sensorRepo
+                .orientationFlow()
+                .shareIn(this, SharingStarted.Eagerly)
 
-    private val outputBuffer = mmOutStream
-        .bufferedWriter()
+            val inputFlow = mmInStream
+                ?.bufferedReader()
+                ?.lineSequence()
+                ?.asFlow()
+                ?.flowOn(Dispatchers.IO)
 
-    private val outputFlow = callbackFlow<Int> {  }
+            inputFlow
+                ?.onCompletion { currentSocket?.close() }
+                ?.onEach { check(it != "Disable") }
+                ?.filter { it == "GetAzimuth" }
+                ?.collect {
+                    sensorFlow
+                        .buffer(1)
+//                        .onCompletion { currentSocket?.close() }
+                        .map { int -> int.toShort().also { Log.d(TAG, it.toString()) } }
+                        .map { int -> ByteBuffer.allocate(2).putShort(int).array() }
+                        .collect { arr -> mmOutStream?.write(arr.also { Log.d(TAG, it.last().toString()) }) }
+                }
+                ?: return@withContext Result.failure()
 
-    override suspend fun doWork(): Result {
-        var loop = true;
-
-
-        while (loop) {
-            withContext(Dispatchers.IO) {
-                inputFlow
-                    .onCompletion { ex -> if (ex != null) loop = false }
-                    .onEach { check(it != "Disable") }
-                    .filter { it == "GetAzimuth" }
-                    .collect { outputFlow.collect { outputBuffer.write(it) } }
-            }
+            Result.success()
         }
 
-
-//        while (true) inputFlow.collect { command ->
-//            if(command == "GetAzimuth") this.outputFlow.collect {
-//                outputBuffer.write(it)
-//            } else if (command == "Disable") {
-//                loop = false
-//            }
-//        }
-
-        currentSocket.close()
-        return Result.success()
-    }
-
-//    override fun onStopped() {
-//        super.onStopped()
-//        currentSocket.close()
-//    }
-
-    fun closed() = Unit
-
     companion object {
-        const val BT_SOCKET = "BT_SOCKET"
+        private const val TAG = "BtDataTransfer"
+        var currentSocket: BluetoothSocket? = null
     }
 }

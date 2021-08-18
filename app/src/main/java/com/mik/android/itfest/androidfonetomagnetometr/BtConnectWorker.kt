@@ -21,13 +21,13 @@ class BtConnectWorker(context: Context, workerParams: WorkerParameters) :
     private val uuid: UUID = UUID.fromString(MY_UUID)
 
     private val mmServerSocket: BluetoothServerSocket by lazy {
-        bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord("NAME", uuid)
+        bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(NAME_DEV, uuid)
     }
 
     override fun doWork(): Result {
 
         while (true) {
-            val socket: BluetoothSocket? = try {
+            val socket: BluetoothSocket = try {
                 mmServerSocket.accept()
             } catch (e: IOException) {
                 Log.e(TAG, "Socket's accept() method failed", e)
@@ -35,9 +35,9 @@ class BtConnectWorker(context: Context, workerParams: WorkerParameters) :
             }
 
             return socket.let {
-//                manageMyConnectedSocket(it)
+                currentSocket = socket
                 mmServerSocket.close()
-                Result.success(workDataOf(Pair(SOCKET_KEY, it)))
+                Result.success()
             }
         }
 
@@ -51,5 +51,6 @@ class BtConnectWorker(context: Context, workerParams: WorkerParameters) :
 
     companion object {
         const val SOCKET_KEY = "BtConnectWorkerGetSocket"
+        var currentSocket: BluetoothSocket? = null
     }
 }

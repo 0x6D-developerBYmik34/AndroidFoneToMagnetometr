@@ -20,6 +20,8 @@ class StateViewModel(application: Application) : AndroidViewModel(application) {
 
     private var bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
+    private var currentSocket: BluetoothSocket? = null
+
     val defaultEnable = bluetoothAdapter.isEnabled
 
     private val _bluetoothOn = MutableLiveData(bluetoothAdapter.isEnabled)
@@ -49,25 +51,34 @@ class StateViewModel(application: Application) : AndroidViewModel(application) {
         OneTimeWorkRequestBuilder<BtConnectWorker>()
             .build()
 
+    private val btDataReceiveWorkRequest: WorkRequest =
+        OneTimeWorkRequestBuilder<BtDataTransferWorker>()
+            .build()
+
     private val stateWork = workManager.getWorkInfoByIdLiveData(btConnectionWorkRequest.id)
 
     val isBtConnect = Transformations.map(stateWork) {
         when(it.state) {
-            WorkInfo.State.SUCCEEDED -> BtConnectState.CONNECTED
+            WorkInfo.State.SUCCEEDED -> {
+                currentSocket = BtConnectWorker.currentSocket
+                BtConnectState.CONNECTED
+            }
             WorkInfo.State.FAILED -> BtConnectState.CONNECTION_FAILED
             WorkInfo.State.CANCELLED -> BtConnectState.CONNECTION_CANCEL
             else -> BtConnectState.CONNECTION
         }
     }
 
-    val btDeviceSocket = Transformations.map(stateWork) {
-        if(it.state == WorkInfo.State.SUCCEEDED)
-            it.outputData.keyValueMap[BtConnectWorker.SOCKET_KEY] as BluetoothSocket
-        else null
-    }
-
     fun btStartServerForConnection() =
         workManager.enqueue(btConnectionWorkRequest)
+
+    fun btStartReceiveData() {
+        BtDataTransferWorker.currentSocket = currentSocket
+        workManager.enqueue(btDataReceiveWorkRequest)
+    }
+
+    fun btCancelReceiveData() =
+        workManager.cancelWorkById(btDataReceiveWorkRequest.id)
 
     private fun btNowIsOn() {
         _bluetoothOn.value = true
