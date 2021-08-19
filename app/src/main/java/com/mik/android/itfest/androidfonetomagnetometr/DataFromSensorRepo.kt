@@ -17,6 +17,7 @@ class DataFromSensorRepo(context: Context) {
     private val sensorManager: SensorManager =
         ContextCompat.getSystemService(context, SensorManager::class.java) as SensorManager
 
+    @ExperimentalCoroutinesApi
     fun orientationFlow() =
         combine(
             sensorFlow(Sensor.TYPE_MAGNETIC_FIELD),

@@ -2,17 +2,18 @@ package com.mik.android.itfest.androidfonetomagnetometr
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Checkbox
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,8 +28,8 @@ class MainActivity : ComponentActivity() {
     private val permissionViewModel by viewModels<PermissionViewModel>()
 
     private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) permissionViewModel.permissionBecameGranted()
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { map ->
+            if (map.values.all { it }) permissionViewModel.permissionBecameGranted()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +49,12 @@ class MainActivity : ComponentActivity() {
                     ) {
 //                        DisplayValues(sensorViewModel = sensorViewModel)
 
+                        val isGranted by permissionViewModel.permissionIsGranted.observeAsState(false)
+                        if (!isGranted)
+                            TextButton(onClick = { requestPermissionLauncher.launch(permissions) }) {
+                                Text("Принять необходимые разрешения")
+                            }
+
                         IsGranted(permissionViewModel) {
                             BtRemote(
                                 stateViewModel = stateViewModel,
@@ -58,16 +65,14 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        when {
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED -> permissionViewModel.permissionBecameGranted()
+        if (permissions.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED })
+            permissionViewModel.permissionBecameGranted()
 
-            shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) -> {}
-
-            else -> requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
+//        when {
+//            permissions.all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
+//            -> permissionViewModel.permissionBecameGranted()
+//            else -> requestPermissionLauncher.launch(permissions)
+//        }
     }
 
 //    override fun onResume() {
@@ -79,6 +84,18 @@ class MainActivity : ComponentActivity() {
 //        super.onPause()
 //        sensorViewModel.stopListeningSensors()
 //    }
+
+    companion object {
+        private val permissions =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                )
+            } else {
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+    }
 }
 
 @Preview(showBackground = true)

@@ -20,7 +20,7 @@ class StateViewModel(application: Application) : AndroidViewModel(application) {
 
     private var bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
-    private var currentSocket: BluetoothSocket? = null
+//    private var currentSocket: BluetoothSocket? = null
 
     val defaultEnable = bluetoothAdapter.isEnabled
 
@@ -60,7 +60,7 @@ class StateViewModel(application: Application) : AndroidViewModel(application) {
     val isBtConnect = Transformations.map(stateWork) {
         when(it.state) {
             WorkInfo.State.SUCCEEDED -> {
-                currentSocket = BtConnectWorker.currentSocket
+                BtDataTransferWorker.currentSocket = BtConnectWorker.currentSocket
                 BtConnectState.CONNECTED
             }
             WorkInfo.State.FAILED -> BtConnectState.CONNECTION_FAILED
@@ -73,7 +73,6 @@ class StateViewModel(application: Application) : AndroidViewModel(application) {
         workManager.enqueue(btConnectionWorkRequest)
 
     fun btStartReceiveData() {
-        BtDataTransferWorker.currentSocket = currentSocket
         workManager.enqueue(btDataReceiveWorkRequest)
     }
 
