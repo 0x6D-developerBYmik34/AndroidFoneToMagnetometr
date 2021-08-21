@@ -11,7 +11,7 @@ import androidx.work.workDataOf
 import java.io.IOException
 import java.util.*
 
-private const val TAG = "BtConnectWorker"
+const val TAG = "BtConnectWorker"
 
 class BtConnectWorker(context: Context, workerParams: WorkerParameters) :
     Worker(context, workerParams) {

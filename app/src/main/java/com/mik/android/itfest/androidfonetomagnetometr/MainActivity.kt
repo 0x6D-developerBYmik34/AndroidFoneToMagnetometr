@@ -1,6 +1,7 @@
 package com.mik.android.itfest.androidfonetomagnetometr
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -11,8 +12,7 @@ import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.mik.android.itfest.androidfonetomagnetometr.ui.theme.AndroidFoneToMagnetometrTheme
+import kotlinx.coroutines.ObsoleteCoroutinesApi
 
 class MainActivity : ComponentActivity() {
 
@@ -32,6 +33,7 @@ class MainActivity : ComponentActivity() {
             if (map.values.all { it }) permissionViewModel.permissionBecameGranted()
         }
 
+    @ObsoleteCoroutinesApi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -56,9 +58,40 @@ class MainActivity : ComponentActivity() {
                             }
 
                         IsGranted(permissionViewModel) {
-                            BtRemote(
-                                stateViewModel = stateViewModel,
-                            )
+                            val btButtonState by stateViewModel.bluetoothOn.observeAsState(stateViewModel.defaultEnable)
+
+
+                            TurnOnOff(onClick = {
+                                if (!btButtonState) {
+                                    stateViewModel.btEnable()
+                                } else {
+                                    stateViewModel.btDisable()
+                                }
+                            }, btButtonState)
+
+
+                            if (btButtonState) {
+                                var isActive by remember {
+                                    mutableStateOf(false)
+                                }
+                                Button(onClick = {
+                                    Intent(
+                                        this@MainActivity,
+                                        BluetoothServerService::class.java
+                                    ).also {
+                                        isActive = if (!isActive) {
+                                            startForegroundService(it)
+                                            true
+                                        } else {
+                                            stopService(it)
+                                            false
+                                        }
+                                    }
+
+                                }) {
+                                    Text(if (isActive) "OnStop" else "onStart")
+                                }
+                            }
                         }
                     }
                 }
